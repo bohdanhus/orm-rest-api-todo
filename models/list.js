@@ -1,60 +1,145 @@
-import models from '../modelsDB/models'
+const sequelize = require('./config');
+const Sequelize = require('sequelize');
 
-class ListModel {
-
-    async createList(title) {
-        return await models.Lists.create({title});
+const lists = sequelize.define("lists", {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+        allowNull: false
+    },
+    name: {
+        type: Sequelize.TEXT,
+        allowNull: false
     }
+});
 
-    async getLists() {
-        const lists = await models.Lists.findAll();
-        return lists;
+const tasks = sequelize.define("tasks", {
+    id: {
+        type: Sequelize.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+        allowNull: false
+    },
+    name: {
+        type: Sequelize.TEXT,
+        allowNull: false
+    },
+    done: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false
+    },
+    list_id: {
+        type: Sequelize.INTEGER,
+        allowNull: false
+    },
+    due_date: {
+        type: Sequelize.DATEONLY,
+        allowNull: false
     }
+});
 
-    async updateTask(id, title) {
-        console.log(id, title)
-        await models.Lists.update(
-            { title: title },
-            { where: { id: id }}
-        )
-        return 200;
-    }
+// sequelize.sync().then(result => console.log(result))
+//     .catch(err => {
+//         console.log('err');
+//         console.log(err);
+//     });
 
-    async deleteList(id) {
-        models.Lists.destroy({
-            where: {
-                id: id
+// lists.hasMany(tasks, { onDelete: "cascade" }); // ????
+tasks.hasOne(lists);
+
+class ListTodos {
+
+    checkExistence(listId, id) {
+        return tasks.findAll(
+            {
+                where: {
+                    list_id: +listId,
+                    id: +id
+                }
+            }).then(bool => {
+            if (bool.length > 0) {
+                return true;
             }
-        })
+        });
     }
 
-    async getTasks(options, res) {
-        const {todosListId, all} = options;
-        if (all === 'true') {
-            const tasks = await models.Lists.findAll({
-                where: {
-                    todosListId: todosListId
-                }
-            });
-            res.status(200);
-            res.json(tasks);
-        }
-        else if(all === 'false') {
-            const tasks = await models.Lists.findAll({
-                where: {
-                    todosListId: todosListId,
-                    done: false
-                }
-            });
-            res.status(200);
-            res.json(tasks);
-        }
-        else {
-            res.status(400);
-            res.end('Bad request');
-        }
+    displayAll(listId) {
+        return tasks.findAll({ where: { list_id: +listId }, raw: true }, { attributes: ['id', 'name', 'done', 'due_date'] })
+            .then(list => {
+                return list;
+            }).catch(err => console.log(err));
+    }
+
+    displaySingle(listId, id) {
+        return this.checkExistence(listId, id).then(bool => {
+            if (bool) {
+                return tasks.findByPk(+id)
+                    .then(res => {
+                        return res;
+                    }).catch(err => console.log(err));
+            }
+        });
+    }
+
+    addTask(listId, body) {
+        return tasks.create({
+            name: body.name,
+            list_id: +listId,
+            done: body.done,
+            due_date: body.due_date
+        }).then(res => {
+            const task = { id: res.id, name: res.name, done: res.done, due_date: res.due_date };
+            return task;
+        }).catch(err => console.log(err));
+    }
+
+    updateTask(listId, id, body) {
+        return this.checkExistence(listId, id).then(bool => {
+            if (bool) {
+                return tasks.update({ done: Boolean(body.done) }, {
+                    where: { id: +id }
+                }).then(() => {
+                    return this.displaySingle(listId, id).then((res) => {
+                        return res;
+                    });
+                });
+            }
+        });
+    }
+
+    rewriteTask(listId, id, body) {
+        return this.checkExistence(listId, id).then(bool => {
+            if (bool) {
+                return tasks.update({ done: Boolean(body.done), name: body.name, due_date: body.due_date }, {
+                    where: { id: +id }
+                }).then(() => {
+                    return this.displaySingle(listId, id).then((res) => {
+                        return res;
+                    });
+                });
+            }
+        });
+    }
+
+    deleteTask(listId, id) {
+        return this.checkExistence(listId, id).then(bool => {
+            if (bool) {
+                return tasks.destroy({
+                    where: {
+                        id: +id
+                    }
+                }).then(() => {
+                    return this.displayAll(listId).then((res) => {
+                        return res;
+                    });
+                });
+            }
+        });
     }
 
 }
 
-export default new ListModel();
+const List_orm = new ListTodos();
+
+module.exports = List_orm;

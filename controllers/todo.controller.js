@@ -1,25 +1,14 @@
-import taskModel from '../models/tasks'
+import taskModel from '../models/task.js'
 
 class Tasks {
-    async createTask(req, res) {
-        const {task, done, due_date, todosListId} = req.body;
-        res.json(await taskModel.createTask(task, done, due_date, todosListId));
+    async getTasks(listId) {
+        return taskModel.getTasks(listId);
     }
-
-    async getTasks(req, res) {
-        res.json(await taskModel.getTasks());
+    async getTask(listId, id) {
+        return taskModel.getTask(listId, id);
     }
-
-
-    async getTask(req, res) {
-        const id = req.params.id;
-        try {
-            res.status(200);
-            res.json(await taskModel.getTask(id));
-        } catch {
-            res.status(400);
-            res.end('Bad request');
-        }
+    async createTask(title, done, due_date, list_id) {
+        return taskModel.createTask(title, done, due_date, list_id)
     }
 
     async updateTask(req, res) {
@@ -44,6 +33,10 @@ class Tasks {
             res.status(400);
             res.end('Bad request');
         }
+
+    }
+    async putTask(req, res){
+        const id = req.params.id;
 
     }
 }

@@ -1,6 +1,6 @@
-import app from './app'
-import sequalize from './sequelize'
-const start = async () => {
+import app from './app.js'
+import sequalize from './db.js'
+async function start() {
     try {
         await sequalize.authenticate();
         await sequalize.sync();
