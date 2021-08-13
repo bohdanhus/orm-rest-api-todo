@@ -1,8 +1,6 @@
 import models from "../DB/index.js";
 
 class TaskModel {
-
-
     getTasks(listId) {
         return models.Todo.findAll({
                 where: {list_id: listId},
@@ -29,40 +27,42 @@ class TaskModel {
         })
             .then(r => {
                 let task;
-                task = {id: r.id, title: r.title,done: r.done,due_date: r.due_date, list_id: r.list_id};
+                task = {id: r.id, title: r.title, done: r.done, due_date: r.due_date, list_id: r.list_id};
                 return task;
             }).catch(err => console.log(err))
     }
 
-    async updateTask(options, id) {
-        const tasksField = ['title', 'done', 'due_date', 'list_id'];
-        let updatedField = {};
-
-        tasksField.forEach(elem => {
-            if (options[elem] !== undefined) {
-                updatedField[elem] = options[elem];
-            }
-        })
-
-        await models.Todo.update(
-            updatedField,
+    updateTask(listId, id, done) {
+        return models.Todo.findAll(
             {
                 where: {
+                    list_id: listId,
                     id: id
                 }
+            }).then(bool => {
+            if (bool > 0) {
+                return models.Todo.update({done: Boolean(done.done)}, {
+                    where: {id: id}
+                }).then(() => {
+                    return this.getTask(listId, id).then((res) => {
+                        return res;
+                    }).catch(err => console.log(err));
+                });
             }
-        )
-        return 200;
+        });
     }
 
     async deleteTask(id) {
-        await models.Todo.destroy({
-            where: {
-                id: id
-            }
-        })
+            return models.Todo.destroy({
+                where: {
+                    id: id
+                }
+            }).catch((err) => console.log(err))
     }
 
+    putTask() {
+        return Promise.resolve(undefined);
+    }
 }
 
 
